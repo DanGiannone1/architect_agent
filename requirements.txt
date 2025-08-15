@@ -1,0 +1,9 @@
+azure-ai-projects==1.0.0
+azure-identity
+azure-monitor-opentelemetry
+opentelemetry-sdk
+opentelemetry-instrumentation-openai-v2==2.1b0
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic

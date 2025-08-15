@@ -1,0 +1,57 @@
+
+Dan's Checklist
+Step 1 - Review the 5 pillars of WAF: Azure Well-Architected Framework - Microsoft Azure Well-Architected Framework | Microsoft Learn
+What do we need to capture in PROD? 
+Conversation
+
+User prompts
+Tool Calls
+Supporting Context/Retrieved Data
+LLM Output
+Why: Storing the conversation history, including all the relevant details of a given interaction, is important for the following reasons: 
+
+Debugging -> user provides feedback of a bad answer or incorrect action. In order for the dev team to debug, we need to be able to trace through the entire interaction/conversation to see where things went wrong. Did we truncate the conversation history too soon, is our retrieval strategy flawed, or perhaps we need a smarter LLM. 
+Auditing -> If we have audit requirements, we need to be able to show what the AI said or did for some period of historical retention. 
+Batch Evaluations -> In order to perform evaluations and see how our agent is performing in PROD, we need to store the relevant info somewhere. We want our batch evaluations against PROD to run asynchronously and independently from the actual prod interactions. 
+Analytics -> If there is a need for any analytics or reporting not provided OOTB by Foundry, we need to store the data somewhere. 
+How: If we are using the Azure Agent Service, conversation threads are managed for you and can be easily stored in CosmosDB. If we are not, we can use the conversation management class/module of whatever orchestrator we are using, and store that in CosmosDB. 
+User Feedback  
+
+Thumbs up/Thumbs Down or 1-5 star rating
+Free text field for comments 
+
+Why: Capturing user feedback is critical to iteratively improving the system. 
+How: Build a feedback option into your user interface and then store in CosmosDB. 
+
+System Metrics
+
+LLM latency (provided OOTB in Foundry)
+Non-LLM latency (retrieval, tools, end-to-end timing)
+Token Usage (provided OOTB in Foundry) 
+Overall Cost 
+Number of requests
+Why: Capturing system metrics is critical to maintaining system health and planning for the future
+How: Foundry provides some metrics out-of-the-box. For others such as requests or retrieval latency, we need to look at the application itself (via app insights and application logging). For overall app cost, we can look at the resource group or the collection of services.  
+
+Evaluations & Accuracy Benchmarks 
+
+
+Gold Standard Benchmark Set - A list of questions/tasks that will be the input for the system. For each question/task:What is the correct retrieved context for this question? Or what are the correct intermediary steps for this task? 
+What is the correct answer or correct pathway for this task? 
+
+When: This list should be compiled in partnership with business SMEs during the design phase. However, if that hasn't been done, it is critical to do before UAT/PROD. 
+Why: Without something to benchmark on, you have no idea how accurate or inaccurate your Gen AI system is and are going of "gut feel". Any time you introduce a change to the system, without benchmarks you don't know if you made the system better or worse. Every Gen AI use-case has an "accuracy threshold" that the system needs to reach for it to be "acceptable" in production and drive real value. If we do not follow this benchmarking process, we risk putting something into production that does not create value or worse: introduces risk. 
+
+Customer Communications Best Practices
+
+Always follow-up meetings with a summary of recommendations and action items
+
+General Tips
+
+Don't use chunking unless necessary - we have 1 million token context windows now, and inference cost continues to drop. Don't sacrifice accuracy for cost. 
+Context Engineering - think about what needs to be in the LLM's context window to get the right answer. How do we make this happen from a code perspective?
+ 
+
+
+
+<end of Dan's List>
