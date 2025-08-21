@@ -7,3 +7,5 @@ fastapi
 uvicorn[standard]
 python-dotenv
 pydantic
+httpx
+openai
