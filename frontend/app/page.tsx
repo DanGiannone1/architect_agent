@@ -26,6 +26,15 @@ const STARTER_QUESTIONS = [
   "How do I implement proper monitoring and observability for my AI application?",
 ]
 
+const PRODUCTION_READINESS_SERVICES = [
+  "Azure OpenAI",
+  "Azure App Service", 
+  "Azure Functions",
+  "Azure Cosmos DB",
+  "Azure Storage",
+  "Azure Key Vault"
+]
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
@@ -55,7 +64,46 @@ export default function ChatPage() {
   ])
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [showStarterQuestions, setShowStarterQuestions] = useState(true)
+  const [productionSessionId, setProductionSessionId] = useState<string | null>(null)
+  const [isProductionMode, setIsProductionMode] = useState(false)
+  const [currentService, setCurrentService] = useState<string>("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const startProductionReadiness = async (service: string) => {
+    try {
+      setIsLoading(true)
+      setIsProductionMode(true)
+      setCurrentService(service)
+      setShowStarterQuestions(false)
+      
+      const response = await fetch('http://localhost:8000/api/production-readiness', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service: service,
+          messages: []
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      setMessages([data.message])
+      
+    } catch (error) {
+      console.error('Error starting production readiness session:', error)
+      setMessages([{
+        role: 'assistant',
+        content: 'Sorry, I encountered an error starting the production readiness session. Please try again.'
+      }])
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -75,6 +123,22 @@ export default function ChatPage() {
     })))
   }, [messages])
 
+  // Check for query parameters on component mount
+  useEffect(() => {
+    const checkQueryParams = () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const service = urlParams.get('service')
+      
+      if (service && !isLoading && messages.length === 0) {
+        console.log(`🚀 Auto-starting production readiness for service: ${service}`)
+        startProductionReadiness(service)
+      }
+    }
+
+    // Run after component mounts
+    checkQueryParams()
+  }, [])
+
   const sendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputMessage
     if (!textToSend.trim() || isLoading) return
@@ -92,14 +156,45 @@ export default function ChatPage() {
     setIsLoading(true)
     setShowStarterQuestions(false)
 
-    // Add placeholder message for streaming
+    // Prepare initial assistant message placeholder
     const initialAssistantMessage: Message = {
       role: 'assistant',
       content: ''
     }
+
     setMessages(prev => [...prev, initialAssistantMessage])
 
     try {
+      // Use production readiness API if in production mode
+      if (isProductionMode) {
+        const response = await fetch('http://localhost:8000/api/production-readiness', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            service: currentService || "Azure OpenAI", // Use currentService or fallback
+            messages: currentMessages
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        
+        setMessages(prev => prev.map((msg, index) => 
+          index === prev.length - 1 && msg.role === 'assistant'
+            ? data.message
+            : msg
+        ))
+        
+        setIsLoading(false)
+        return
+      }
+
+      // Original streaming logic for regular chat
       console.log('🚀 Starting streaming request to /api/chat/stream...')
       
       const response = await fetch('http://localhost:8000/api/chat/stream', {
@@ -244,6 +339,9 @@ export default function ChatPage() {
   const startNewChat = () => {
     setMessages([])
     setCurrentSessionId(null)
+    setIsProductionMode(false)
+    setCurrentService("")
+    setProductionSessionId(null)
     setShowStarterQuestions(true)
   }
 
@@ -383,6 +481,28 @@ export default function ChatPage() {
                     </div>
                   </button>
                 ))}
+              </div>
+              
+              {/* Production Readiness Section */}
+              <div className="mt-20 max-w-4xl w-full">
+                <div className="text-center mb-8">
+                  <h4 className="text-2xl font-medium text-white mb-2">Production Readiness Review</h4>
+                  <p className="text-gray-300 text-lg font-light">
+                    Start a production readiness assessment for a specific Azure service
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                  {PRODUCTION_READINESS_SERVICES.map((service, index) => (
+                    <button
+                      key={index}
+                      onClick={() => startProductionReadiness(service)}
+                      className="p-6 text-center bg-blue-700/60 border border-blue-600/40 rounded-2xl hover:bg-blue-600/60 hover:border-blue-500/50 transition-all duration-300 group shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                    >
+                      <span className="text-blue-100 font-medium text-base tracking-wide">{service}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
